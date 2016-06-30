@@ -27,6 +27,11 @@
 
 #import <objc/runtime.h>
 
+#if !__has_feature(objc_arc)
+    #error ARC must be enabled
+#endif
+
+
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 70000
 #define WY_BASE_SDK_7_ENABLED
 #endif
@@ -44,7 +49,6 @@
 #define WY_IS_IOS_GREATER_THAN_OR_EQUAL_TO(v)  ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] != NSOrderedAscending)
 
 #define WY_IS_IOS_LESS_THAN(v)                 ([[[UIDevice currentDevice] systemVersion] compare:v options:NSNumericSearch] == NSOrderedAscending)
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -151,12 +155,12 @@ static char const * const UINavigationControllerEmbedInPopoverTagKey = "UINaviga
     Method original, swizzle;
     
     original = class_getInstanceMethod(self, @selector(pushViewController:animated:));
-    swizzle = class_getInstanceMethod(self, @selector(sizzled_pushViewController:animated:));
+    swizzle = class_getInstanceMethod(self, @selector(winobjc_swizzled_pushViewController:animated:));
     
     method_exchangeImplementations(original, swizzle);
     
     original = class_getInstanceMethod(self, @selector(setViewControllers:animated:));
-    swizzle = class_getInstanceMethod(self, @selector(sizzled_setViewControllers:animated:));
+    swizzle = class_getInstanceMethod(self, @selector(winobjc_swizzled_setViewControllers:animated:));
     
     method_exchangeImplementations(original, swizzle);
 }
@@ -165,7 +169,7 @@ static char const * const UINavigationControllerEmbedInPopoverTagKey = "UINaviga
 {
     BOOL result = NO;
     
-    NSNumber *value = objc_getAssociatedObject(self, UINavigationControllerEmbedInPopoverTagKey);
+    NSNumber *value = objc_getAssociatedObject(self, (char*)UINavigationControllerEmbedInPopoverTagKey);
     
     if (value)
     {
@@ -177,7 +181,7 @@ static char const * const UINavigationControllerEmbedInPopoverTagKey = "UINaviga
 
 - (void)setEmbedInPopover:(BOOL)value
 {
-    objc_setAssociatedObject(self, UINavigationControllerEmbedInPopoverTagKey, [NSNumber numberWithBool:value], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    objc_setAssociatedObject(self, (char*)UINavigationControllerEmbedInPopoverTagKey, [NSNumber numberWithBool:value], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
 - (CGSize)contentSize:(UIViewController *)aViewController
@@ -216,7 +220,7 @@ static char const * const UINavigationControllerEmbedInPopoverTagKey = "UINaviga
 #endif
 }
 
-- (void)sizzled_pushViewController:(UIViewController *)aViewController animated:(BOOL)aAnimated
+- (void)winobjc_swizzled_pushViewController:(UIViewController *)aViewController animated:(BOOL)aAnimated
 {
     if (self.isEmbedInPopover)
     {
@@ -229,7 +233,7 @@ static char const * const UINavigationControllerEmbedInPopoverTagKey = "UINaviga
         [self setContentSize:contentSize];
     }
     
-    [self sizzled_pushViewController:aViewController animated:aAnimated];
+    [self winobjc_swizzled_pushViewController:aViewController animated:aAnimated];
     
     if (self.isEmbedInPopover)
     {
@@ -238,7 +242,7 @@ static char const * const UINavigationControllerEmbedInPopoverTagKey = "UINaviga
     }
 }
 
-- (void)sizzled_setViewControllers:(NSArray *)aViewControllers animated:(BOOL)aAnimated
+- (void)winobjc_swizzled_setViewControllers:(NSArray *)aViewControllers animated:(BOOL)aAnimated
 {
     NSUInteger count = [aViewControllers count];
     
@@ -254,7 +258,7 @@ static char const * const UINavigationControllerEmbedInPopoverTagKey = "UINaviga
     }
 #endif
     
-    [self sizzled_setViewControllers:aViewControllers animated:aAnimated];
+    [self winobjc_swizzled_setViewControllers:aViewControllers animated:aAnimated];
     
     if (self.isEmbedInPopover && count > 0)
     {
@@ -282,13 +286,13 @@ static char const * const UINavigationControllerEmbedInPopoverTagKey = "UINaviga
 #pragma clang diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated"
     original = class_getInstanceMethod(self, @selector(setContentSizeForViewInPopover:));
-    swizzle = class_getInstanceMethod(self, @selector(sizzled_setContentSizeForViewInPopover:));
+    swizzle = class_getInstanceMethod(self, @selector(winobjc_swizzled_setContentSizeForViewInPopover:));
     method_exchangeImplementations(original, swizzle);
 #pragma clang diagnostic pop
     
 #ifdef WY_BASE_SDK_7_ENABLED
     original = class_getInstanceMethod(self, @selector(setPreferredContentSize:));
-    swizzle = class_getInstanceMethod(self, @selector(sizzled_setPreferredContentSize:));
+    swizzle = class_getInstanceMethod(self, @selector(winobjc_swizzled_setPreferredContentSize:));
     
     if (original != NULL) {
         method_exchangeImplementations(original, swizzle);
@@ -296,9 +300,9 @@ static char const * const UINavigationControllerEmbedInPopoverTagKey = "UINaviga
 #endif
 }
 
-- (void)sizzled_setContentSizeForViewInPopover:(CGSize)aSize
+- (void)winobjc_swizzled_setContentSizeForViewInPopover:(CGSize)aSize
 {
-    [self sizzled_setContentSizeForViewInPopover:aSize];
+    [self winobjc_swizzled_setContentSizeForViewInPopover:aSize];
     
     if ([self isKindOfClass:[UINavigationController class]] == NO && self.navigationController != nil)
     {
@@ -309,9 +313,9 @@ static char const * const UINavigationControllerEmbedInPopoverTagKey = "UINaviga
     }
 }
 
-- (void)sizzled_setPreferredContentSize:(CGSize)aSize
+- (void)winobjc_swizzled_setPreferredContentSize:(CGSize)aSize
 {
-    [self sizzled_setPreferredContentSize:aSize];
+    [self winobjc_swizzled_setPreferredContentSize:aSize];
     
     if ([self isKindOfClass:[UINavigationController class]] == NO && self.navigationController != nil)
     {
@@ -438,11 +442,17 @@ static char const * const UINavigationControllerEmbedInPopoverTagKey = "UINaviga
     
     WYPopoverTheme *result = nil;
     
+    // We avoid use of the WY_IS_IOS_LESS_THAN macro here
+    // because of an issue calling |UIDevice| methods at |+ (void)load| time.
+#ifdef WINOBJC
+    result = [WYPopoverTheme themeForIOS7];
+#else
     if (WY_IS_IOS_LESS_THAN(@"7.0")) {
         result = [WYPopoverTheme themeForIOS6];
     } else {
         result = [WYPopoverTheme themeForIOS7];
     }
+#endif
     
     return result;
 }
@@ -830,7 +840,7 @@ static float edgeSizeFromCornerRadius(float cornerRadius) {
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
 {
     if (testHits) {
-        return NO;
+        return nil;
     }
     
     UIView *view = [super hitTest:point withEvent:event];
@@ -894,8 +904,6 @@ static float edgeSizeFromCornerRadius(float cornerRadius) {
 }
 
 @property(nonatomic, assign) id <WYPopoverBackgroundViewDelegate> delegate;
-
-@property (nonatomic, assign) WYPopoverArrowDirection arrowDirection;
 
 @property (nonatomic, strong, readonly) UIView *contentView;
 @property (nonatomic, assign, readonly) float navigationBarHeight;
@@ -1385,7 +1393,6 @@ static float edgeSizeFromCornerRadius(float cornerRadius) {
         UIGraphicsPopContext();
     }
 }
-
 #pragma mark Private
 
 - (CGRect)outerRect
@@ -1449,10 +1456,15 @@ static float edgeSizeFromCornerRadius(float cornerRadius) {
         result.size.height -= borderWidth;
     }
     
+    // The below code is disabled on WINOBJC due to an issue where |viewContentInsets| has a garbage value (in DEBUG builds).
+    // Given that most of the theming/drawing code in WYPopoverController is effectively a no-op in WINOBJC,
+    // just skipping over the below is an adequate (or at least quick) fix.
+#ifndef WINOBJC
     result.origin.x += viewContentInsets.left;
     result.origin.y += viewContentInsets.top;
     result.size.width = result.size.width - viewContentInsets.left - viewContentInsets.right;
     result.size.height = result.size.height - viewContentInsets.top - viewContentInsets.bottom;
+#endif
     
     if (borderWidth > 0)
     {
@@ -1543,7 +1555,6 @@ static float edgeSizeFromCornerRadius(float cornerRadius) {
     CGRect                   rect;
     UIView                  *inView;
     WYPopoverOverlayView    *overlayView;
-    WYPopoverBackgroundView *backgroundView;
     WYPopoverArrowDirection  permittedArrowDirections;
     BOOL                     animated;
     BOOL                     isListeningNotifications;
@@ -1596,6 +1607,7 @@ static float edgeSizeFromCornerRadius(float cornerRadius) {
 @synthesize popoverContentSize = popoverContentSize_;
 @synthesize animationDuration;
 @synthesize theme;
+@synthesize backgroundView;
 
 static WYPopoverTheme *defaultTheme_ = nil;
 
@@ -2216,7 +2228,7 @@ static WYPopoverTheme *defaultTheme_ = nil;
 
 - (void)positionPopover:(BOOL)aAnimated
 {
-    CGRect savedContainerFrame = backgroundView.frame;
+    CGRect savedContainerFrame = backgroundView ? backgroundView.frame : CGRectZero;
     
     UIInterfaceOrientation orientation = [[UIApplication sharedApplication] statusBarOrientation];
     
@@ -2228,8 +2240,12 @@ static WYPopoverTheme *defaultTheme_ = nil;
     float minX, maxX, minY, maxY, offset = 0;
     CGSize containerViewSize = CGSizeZero;
     
-    float overlayWidth = UIInterfaceOrientationIsPortrait(orientation) ? overlayView.bounds.size.width : overlayView.bounds.size.height;
-    float overlayHeight = UIInterfaceOrientationIsPortrait(orientation) ? overlayView.bounds.size.height : overlayView.bounds.size.width;
+    float overlayWidth = 0;
+    float overlayHeight = 0;
+    if (overlayView) {
+        overlayWidth = UIInterfaceOrientationIsPortrait(orientation) ? overlayView.bounds.size.width : overlayView.bounds.size.height;
+        overlayHeight = UIInterfaceOrientationIsPortrait(orientation) ? overlayView.bounds.size.height : overlayView.bounds.size.width;
+    }
     
     float keyboardHeight = UIInterfaceOrientationIsPortrait(orientation) ? keyboardRect.size.height : keyboardRect.size.width;
     
@@ -2274,7 +2290,11 @@ static WYPopoverTheme *defaultTheme_ = nil;
     if (arrowDirection == WYPopoverArrowDirectionDown)
     {
         backgroundView.arrowDirection = WYPopoverArrowDirectionDown;
-        containerViewSize = [backgroundView sizeThatFits:contentViewSize];
+        if (backgroundView) {
+            containerViewSize = [backgroundView sizeThatFits:contentViewSize];
+        } else {
+            containerViewSize = contentViewSize;
+        }
         
         containerFrame = CGRectZero;
         containerFrame.size = containerViewSize;
@@ -2325,7 +2345,11 @@ static WYPopoverTheme *defaultTheme_ = nil;
     if (arrowDirection == WYPopoverArrowDirectionUp)
     {
         backgroundView.arrowDirection = WYPopoverArrowDirectionUp;
-        containerViewSize = [backgroundView sizeThatFits:contentViewSize];
+        if (backgroundView) {
+            containerViewSize = [backgroundView sizeThatFits:contentViewSize];
+        } else {
+            containerViewSize = contentViewSize;
+        }
         
         containerFrame = CGRectZero;
         containerFrame.size = containerViewSize;
@@ -2373,7 +2397,11 @@ static WYPopoverTheme *defaultTheme_ = nil;
     if (arrowDirection == WYPopoverArrowDirectionRight)
     {
         backgroundView.arrowDirection = WYPopoverArrowDirectionRight;
-        containerViewSize = [backgroundView sizeThatFits:contentViewSize];
+        if (backgroundView) {
+            containerViewSize = [backgroundView sizeThatFits:contentViewSize];
+        } else {
+            containerViewSize = contentViewSize;
+        }
         
         containerFrame = CGRectZero;
         containerFrame.size = containerViewSize;
@@ -2425,7 +2453,12 @@ static WYPopoverTheme *defaultTheme_ = nil;
     if (arrowDirection == WYPopoverArrowDirectionLeft)
     {
         backgroundView.arrowDirection = WYPopoverArrowDirectionLeft;
-        containerViewSize = [backgroundView sizeThatFits:contentViewSize];
+
+        if (backgroundView) {
+            containerViewSize = [backgroundView sizeThatFits:contentViewSize];
+        } else {
+            containerViewSize = contentViewSize;
+        }
         
         containerFrame = CGRectZero;
         containerFrame.size = containerViewSize;
@@ -2523,7 +2556,9 @@ static WYPopoverTheme *defaultTheme_ = nil;
     
     backgroundView.transform = CGAffineTransformMakeRotation(WYInterfaceOrientationAngleOfOrientation(orientation));
     
-    containerFrame = backgroundView.frame;
+    if (backgroundView) {
+        containerFrame = backgroundView.frame;
+    }
     
     containerFrame.origin = WYPointRelativeToOrientation(containerOrigin, containerFrame.size, orientation);
 
@@ -2890,9 +2925,12 @@ static WYPopoverTheme *defaultTheme_ = nil;
         }
     }
     
-    float overlayWidth = UIInterfaceOrientationIsPortrait(orientation) ? overlayView.bounds.size.width : overlayView.bounds.size.height;
-    
-    float overlayHeight = UIInterfaceOrientationIsPortrait(orientation) ? overlayView.bounds.size.height : overlayView.bounds.size.width;
+    float overlayWidth = 0;
+    float overlayHeight = 0;
+    if (overlayView) {
+        overlayWidth = UIInterfaceOrientationIsPortrait(orientation) ? overlayView.bounds.size.width : overlayView.bounds.size.height;
+        overlayHeight = UIInterfaceOrientationIsPortrait(orientation) ? overlayView.bounds.size.height : overlayView.bounds.size.width;
+    }
     
     minX = popoverLayoutMargins.left;
     maxX = overlayWidth - popoverLayoutMargins.right;
@@ -3091,17 +3129,17 @@ static CGPoint WYPointRelativeToOrientation(CGPoint origin, CGSize size, UIInter
     }
     else if ([delegate respondsToSelector:@selector(popoverController:willRepositionPopoverToRect:inView:)])
     {
-        CGRect anotherRect;
-        UIView *anotherInView;
+        CGRect anotherRect = CGRectZero;
+        UIView *anotherInView = nil;
         
         [delegate popoverController:self willRepositionPopoverToRect:&anotherRect inView:&anotherInView];
         
-        if (&anotherRect != NULL)
+        if (!CGRectEqualToRect(anotherRect, CGRectZero))
         {
             rect = anotherRect;
         }
         
-        if (&anotherInView != NULL)
+        if (anotherInView != nil)
         {
             inView = anotherInView;
         }

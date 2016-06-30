@@ -23,9 +23,13 @@
  SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#pragma once
+
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <QuartzCore/QuartzCore.h>
+
+#import "WYPopoverPrivate.h"
 
 @protocol WYPopoverControllerDelegate;
 @class WYPopoverTheme;
@@ -87,13 +91,15 @@ typedef NS_OPTIONS(NSUInteger, WYPopoverAnimationOptions) {
 
 @property (nonatomic, strong) UIColor *overlayColor             UI_APPEARANCE_SELECTOR;
 
+@property (nonatomic, assign) WYPopoverArrowDirection arrowDirection;
+
 @end
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 @interface WYPopoverController : NSObject <UIAppearanceContainer>
 
-@property (nonatomic, weak) id <WYPopoverControllerDelegate> delegate;
+@property (nonatomic, assign) id <WYPopoverControllerDelegate> delegate;
 
 @property (nonatomic, copy) NSArray                            *passthroughViews;
 @property (nonatomic, assign) BOOL                              wantsDefaultContentAppearance;
@@ -104,6 +110,7 @@ typedef NS_OPTIONS(NSUInteger, WYPopoverAnimationOptions) {
 @property (nonatomic, assign) float                             animationDuration;
 
 @property (nonatomic, strong) WYPopoverTheme                   *theme;
+@property (nonatomic, readonly) WYPopoverBackgroundView        *backgroundView;
 
 + (void)setDefaultTheme:(WYPopoverTheme *)theme;
 + (WYPopoverTheme *)defaultTheme;
@@ -206,7 +213,7 @@ typedef NS_OPTIONS(NSUInteger, WYPopoverAnimationOptions) {
 
 - (void)popoverControllerDidDismissPopover:(WYPopoverController *)popoverController;
 
-- (void)popoverController:(WYPopoverController *)popoverController willRepositionPopoverToRect:(inout CGRect *)rect inView:(inout UIView **)view;
+- (void)popoverController:(WYPopoverController *)popoverController willRepositionPopoverToRect:(inout CGRect *)rect inView:(inout UIView * _Nonnull*)view;
 
 - (BOOL)popoverControllerShouldIgnoreKeyboardBounds:(WYPopoverController *)popoverController;
 
